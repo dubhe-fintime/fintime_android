@@ -1,33 +1,21 @@
-# Gradle files
+# Android Studio 관련 파일
+*.iml
+.idea/
+.DS_Store
+
+# 빌드 및 캐시 파일
 .gradle/
 build/
-
-# Local configuration file (sdk path, etc)
-local.properties
-
-# Log/OS Files
-*.log
-
-# Android Studio generated files and folders
 captures/
 .externalNativeBuild/
 .cxx/
-*.apk
-output.json
 
-# IntelliJ
-*.iml
-.idea/
-misc.xml
-deploymentTargetDropDown.xml
-render.experimental.xml
+# 로컬 환경 설정 파일
+local.properties
+/local.properties
 
-# Keystore files
-*.jks
+# 기타
+*.log
 *.keystore
-
-# Google Services (e.g. APIs or Firebase)
-google-services.json
-
-# Android Profiling
-*.hprof
+*.class
+*.swp
