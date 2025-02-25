@@ -1,83 +1,119 @@
 package com.dubhe.fintime
 
 import android.os.Bundle
-import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebView.setWebContentsDebuggingEnabled
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.viewinterop.AndroidView
 import com.dubhe.fintime.ui.theme.FInTimeTheme
 
 class MainActivity : ComponentActivity() {
+    private lateinit var webView: WebView  // WebView 인스턴스를 저장
+    private var backPressedTime: Long = 0  // 뒤로 가기 버튼을 누른 시간 저장
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // 뒤로 가기 버튼 동작 설정
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (::webView.isInitialized && webView.canGoBack()) {
+                    val currentUrl = webView.url ?: ""
+                    if (currentUrl == "https://fin-time.com/main") {
+                        exitApp()
+                    } else {
+                        webView.goBack()  // WebView에서 뒤로 가기
+                    }
+                } else {
+                    exitApp()
+                }
+            }
+        })
+
         setContent {
             FInTimeTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    // innerPadding을 WebViewComponent로 전달
-                    WebViewComponent(modifier = Modifier.padding(innerPadding))
+                    WebViewComponent(
+                        modifier = Modifier.padding(innerPadding),
+                        webViewProvider = { webView = it } // WebView 인스턴스 저장
+                    )
                 }
             }
+        }
+    }
+
+    fun exitApp() {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - backPressedTime < 2000) {
+            finish()  // 2초 이내에 두 번 누르면 앱 종료
+        } else {
+            backPressedTime = currentTime
+            Toast.makeText(
+                this@MainActivity,
+                "한 번 더 누르면 종료됩니다.",
+                Toast.LENGTH_SHORT
+            ).show()
         }
     }
 }
 
 @Composable
-fun WebViewComponent(modifier: Modifier = Modifier) {
-    val webView = WebView(LocalContext.current).apply {
-        layoutParams = ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT
-        )
+fun WebViewComponent(modifier: Modifier = Modifier, webViewProvider: (WebView) -> Unit) {
+    val context = LocalContext.current
 
-        settings.javaScriptEnabled = true  // 자바스크립트 활성화
-        settings.useWideViewPort = true  // 뷰포트 사용 가능하도록 설정
-        settings.loadWithOverviewMode = true  // 화면에 맞게 컨텐츠 조정
-        settings.domStorageEnabled = true  // 로컬 저장소 사용 가능하도록 설정
-        settings.setSupportZoom(false)  // 줌 비활성화
-        settings.builtInZoomControls = false  // 줌 컨트롤 비활성화
+    val webView = remember {
+        WebView(context).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
 
-        // WebView 디버깅 활성화
-        setWebContentsDebuggingEnabled(true)
+            settings.javaScriptEnabled = true
+            settings.useWideViewPort = true
+            settings.loadWithOverviewMode = true
+            settings.domStorageEnabled = true
+            settings.setSupportZoom(false)
+            settings.builtInZoomControls = false
 
-        // WebView의 높이 문제 해결
-        settings.allowContentAccess = true
-        settings.allowFileAccess = true
+            setWebContentsDebuggingEnabled(true)
 
-        // WebViewClient 설정 (새로운 페이지를 WebView 내에서 열도록)
-        webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(
-                view: WebView?,
-                request: WebResourceRequest?
-            ): Boolean {
-                view?.loadUrl(request?.url.toString())
-                return true
+            settings.allowContentAccess = true
+            settings.allowFileAccess = true
+
+            webViewClient = object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                    view?.loadUrl(request?.url.toString())
+                    return true
+                }
             }
+
+            webChromeClient = WebChromeClient()
+            loadUrl("https://fin-time.com")
         }
-
-        // WebChromeClient 설정 (로딩 상태를 추적하고 처리할 수 있음)
-        webChromeClient = WebChromeClient()
-
-        // URL 로드
-        loadUrl("https://fin-time.com")
     }
 
-// WebView를 AndroidView로 래핑하여 사용
+    // WebView 인스턴스를 MainActivity에 전달
+    LaunchedEffect(Unit) {
+        webViewProvider(webView)
+    }
+
     AndroidView(
         factory = { webView },
         modifier = modifier
